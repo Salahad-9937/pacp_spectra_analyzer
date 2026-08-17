@@ -34,6 +34,7 @@ class ManualSpectrumProcessor {
     required List<SpectrumMeta> selected,
     SpectrumMeta? background,
     bool skipEmpty = true,
+    bool clampNegative = true,
   }) async {
     final report = ProcessingReport();
 
@@ -66,6 +67,7 @@ class ManualSpectrumProcessor {
           background: background,
           report: report,
           skipEmpty: skipEmpty,
+          clampNegative: clampNegative,
         );
         break;
     }
@@ -132,6 +134,7 @@ class ManualSpectrumProcessor {
     required SpectrumMeta? background,
     required ProcessingReport report,
     required bool skipEmpty,
+    required bool clampNegative,
   }) async {
     if (background == null) {
       report.addWarning(
@@ -192,6 +195,7 @@ class ManualSpectrumProcessor {
         final differenceData = subtractor.subtract(
           sourceData,
           backgroundData,
+          clampNegativeToZero: clampNegative,
         );
 
         final fileName = fileNamer.differenceFileName(

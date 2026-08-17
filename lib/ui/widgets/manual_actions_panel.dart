@@ -15,6 +15,8 @@ class ManualActionsPanel extends StatelessWidget {
     required this.selectedCount,
     required this.skipEmpty,
     required this.onSkipEmptyChanged,
+    required this.clampNegative,
+    required this.onClampNegativeChanged,
     required this.canRun,
     required this.busy,
     required this.onRun,
@@ -30,6 +32,9 @@ class ManualActionsPanel extends StatelessWidget {
   final int selectedCount;
   final bool skipEmpty;
   final ValueChanged<bool> onSkipEmptyChanged;
+
+  final bool clampNegative;
+  final ValueChanged<bool> onClampNegativeChanged;
 
   final bool canRun;
   final bool busy;
@@ -57,70 +62,95 @@ class ManualActionsPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            DropdownButtonFormField<ManualOperation>(
-              initialValue: operation,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Операция',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              items: ManualOperation.values
-                  .map(
-                    (op) => DropdownMenuItem(
-                      value: op,
-                      child: Text(op.label),
-                    ),
-                  )
-                  .toList(),
-              onChanged: busy
-                  ? null
-                  : (value) {
-                      if (value != null) {
-                        onOperationChanged(value);
-                      }
-                    },
-            ),
-            if (operation == ManualOperation.subtractBackground) ...[
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String?>(
-                initialValue: effectiveBackground,
+            Material(
+              type: MaterialType.transparency,
+              child: DropdownButtonFormField<ManualOperation>(
+                initialValue: operation,
                 isExpanded: true,
                 decoration: const InputDecoration(
-                  labelText: 'Фоновый файл',
+                  labelText: 'Операция',
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('Не выбран'),
+                items: ManualOperation.values
+                    .map(
+                      (op) => DropdownMenuItem(
+                        value: op,
+                        child: Text(op.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: busy
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          onOperationChanged(value);
+                        }
+                      },
+              ),
+            ),
+            if (operation == ManualOperation.subtractBackground) ...[
+              const SizedBox(height: 10),
+              Material(
+                type: MaterialType.transparency,
+                child: DropdownButtonFormField<String?>(
+                  initialValue: effectiveBackground,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Фоновый файл',
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
-                  ...items.map(
-                    (meta) => DropdownMenuItem<String?>(
-                      value: meta.path,
-                      child: Text(
-                        meta.shortLabel,
-                        overflow: TextOverflow.ellipsis,
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Не выбран'),
+                    ),
+                    ...items.map(
+                      (meta) => DropdownMenuItem<String?>(
+                        value: meta.path,
+                        child: Text(
+                          meta.shortLabel,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-                onChanged: busy ? null : onBackgroundChanged,
+                  ],
+                  onChanged: busy ? null : onBackgroundChanged,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Material(
+                type: MaterialType.transparency,
+                child: CheckboxListTile(
+                  value: clampNegative,
+                  onChanged: busy
+                      ? null
+                      : (value) {
+                          onClampNegativeChanged(value ?? true);
+                        },
+                  title: const Text('Обнулять отрицательные значения'),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
               ),
             ],
             const SizedBox(height: 6),
-            CheckboxListTile(
-              value: skipEmpty,
-              onChanged: busy
-                  ? null
-                  : (value) {
-                      onSkipEmptyChanged(value ?? false);
-                    },
-              title: const Text('Пропускать пустые файлы'),
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-              dense: true,
+            Material(
+              type: MaterialType.transparency,
+              child: CheckboxListTile(
+                value: skipEmpty,
+                onChanged: busy
+                    ? null
+                    : (value) {
+                        onSkipEmptyChanged(value ?? false);
+                      },
+                title: const Text('Пропускать пустые файлы'),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
             ),
             const SizedBox(height: 8),
             ElevatedButton.icon(

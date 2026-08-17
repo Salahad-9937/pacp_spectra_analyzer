@@ -4,7 +4,11 @@ import 'dart:typed_data';
 import '../../domain/models.dart';
 
 class BackgroundSubtractor {
-  SpectrumData subtract(SpectrumData source, SpectrumData background) {
+  SpectrumData subtract(
+    SpectrumData source,
+    SpectrumData background, {
+    bool clampNegativeToZero = true,
+  }) {
     final minLen = min(source.counts.length, background.counts.length);
 
     final channels = Float64List.fromList(
@@ -15,7 +19,7 @@ class BackgroundSubtractor {
 
     for (var i = 0; i < minLen; i++) {
       final diff = source.counts[i] - background.counts[i];
-      counts[i] = diff < 0 ? 0 : diff;
+      counts[i] = clampNegativeToZero && diff < 0 ? 0 : diff;
     }
 
     return SpectrumData.fromArrays(channels, counts);

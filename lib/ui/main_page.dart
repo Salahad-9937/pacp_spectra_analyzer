@@ -95,6 +95,7 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
   ManualOperation _manualOperation = ManualOperation.average;
   String? _backgroundPath;
   bool _skipEmpty = true;
+  bool _clampNegative = true;
 
   Future<void> _chooseDirectory() async {
     try {
@@ -350,6 +351,7 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
         selected: selected,
         background: background,
         skipEmpty: _skipEmpty,
+        clampNegative: _clampNegative,
       );
 
       if (!mounted) {
@@ -632,7 +634,7 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         SizedBox(
-                          height: 340,
+                          height: 380,
                           child: ManualActionsPanel(
                             operation: _manualOperation,
                             onOperationChanged: (value) {
@@ -652,6 +654,12 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
                             onSkipEmptyChanged: (value) {
                               setState(() {
                                 _skipEmpty = value;
+                              });
+                            },
+                            clampNegative: _clampNegative,
+                            onClampNegativeChanged: (value) {
+                              setState(() {
+                                _clampNegative = value;
                               });
                             },
                             canRun: _canRunManual,
