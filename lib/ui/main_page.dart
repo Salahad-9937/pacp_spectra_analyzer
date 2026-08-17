@@ -3,11 +3,22 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 
 import '../domain/models.dart';
-import '../services/file_name_parser.dart';
-import '../services/file_scanner.dart';
-import '../services/spectrum_loader.dart';
-import '../services/spectrum_processor.dart';
-import '../services/spectrum_writer.dart';
+import '../services/parsing/file_name_parser.dart';
+import '../services/parsing/spectrum_file_candidate.dart';
+import '../services/io/spectrum_file_scanner.dart';
+import '../services/loading/spectrum_file_reader.dart';
+import '../services/loading/cached_spectrum_loader.dart';
+import '../services/loading/spectrum_text_parser.dart';
+import '../services/io/spectrum_file_writer.dart';
+import '../services/processing/spectrum_processor.dart';
+import '../services/processing/spectrum_grouper.dart';
+import '../services/processing/average_groups_step.dart';
+import '../services/processing/experiment_matcher.dart';
+import '../services/processing/subtract_background_step.dart';
+import '../services/processing/spectrum_averager.dart';
+import '../services/processing/background_subtractor.dart';
+import '../services/processing/generated_file_namer.dart';
+
 import 'theme.dart';
 import 'widgets/app_toolbar.dart';
 import 'widgets/file_list_panel.dart';
@@ -23,25 +34,45 @@ class SpectrumDesktopPage extends StatefulWidget {
 }
 
 class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
-  late final FileNameParser _parser = FileNameParser();
+  late final FileNameParser _parser = FileNameParser(
+    candidate: SpectrumFileCandidate(),
+  );
+
   late final SpectrumFileScanner _scanner = SpectrumFileScanner(_parser);
-  late final SpectrumDataLoader _rawLoader = SpectrumDataLoader();
-  late final CachedSpectrumLoader _loader = CachedSpectrumLoader(_rawLoader);
-  late final SpectrumFileWriter _writer = SpectrumFileWriter();
+
+  late final SpectrumFileReader _fileReader = SpectrumFileReader(
+    textParser: SpectrumTextParser(),
+  );
+
+  late final CachedSpectrumLoader _loader = CachedSpectrumLoader(_fileReader);
+
+  late final SpectrumFileWriter _writer = SpectrumFileWriter(
+    formatter: SpectrumDataFormatter(),
+  );
+
+  late final GeneratedFileNamer _fileNamer = GeneratedFileNamer();
 
   late final SpectrumProcessor _processor = SpectrumProcessor(
     scanner: _scanner,
-    loader: _rawLoader,
-    writer: _writer,
+    grouper: SpectrumGrouper(),
+    averageStep: AverageGroupsStep(
+      loader: _fileReader,
+      averager: SpectrumAverager(),
+      writer: _writer,
+      fileNamer: _fileNamer,
+    ),
+    experimentMatcher: ExperimentMatcher(),
+    subtractStep: SubtractBackgroundStep(
+      subtractor: BackgroundSubtractor(),
+      writer: _writer,
+      fileNamer: _fileNamer,
+    ),
   );
 
   String? _currentDirectory;
-
   List<SpectrumMeta> _items = [];
   Map<String, SpectrumMeta> _itemsByPath = {};
-
   final Set<String> _selectedPaths = {};
-
   List<PlotCurve> _plotCurves = [];
 
   String _infoText =
@@ -130,8 +161,7 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
           _infoText =
               'В выбранной директории не найдено подходящих файлов.';
         } else {
-          _infoText =
-              'Кликните по названию файла, чтобы посмотреть информацию.\n'
+          _infoText = 'Кликните по названию файла, чтобы посмотреть информацию.\n'
               'Чекбокс добавляет файл на график.';
         }
       });
@@ -297,7 +327,6 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
 
   void _clearSelection() {
     _selectedPaths.clear();
-
     _updatePlot();
 
     setState(() {

@@ -1,30 +1,20 @@
 import 'package:path/path.dart' as p;
 
-import '../domain/models.dart';
+import '../../domain/models.dart';
+import 'spectrum_file_candidate.dart';
+import 'spectrum_generated_prefixes.dart';
 
 class FileNameParser {
-  static const String avgPrefix = 'Среднее_';
-  static const String resPrefix = 'Результат (без фона)_';
+  FileNameParser({SpectrumFileCandidate? candidate})
+      : _candidate = candidate ?? SpectrumFileCandidate();
+
+  final SpectrumFileCandidate _candidate;
 
   final RegExp _suffixRe = RegExp(r'^(?<base>.+?)_(?<n1>\d+)_(?<n2>\d+)$');
   final RegExp _timeRe = RegExp(r'(\d+(?:[.,]\d+)?)');
 
   bool isCandidate(String filename) {
-    final lower = filename.toLowerCase();
-
-    if (!lower.endsWith('.txt')) {
-      return false;
-    }
-
-    if (lower.startsWith('параметры')) {
-      return false;
-    }
-
-    final stem = filename.substring(0, filename.length - 4);
-
-    return _suffixRe.firstMatch(stem) != null ||
-        filename.startsWith(avgPrefix) ||
-        filename.startsWith(resPrefix);
+    return _candidate.isCandidate(filename);
   }
 
   SpectrumMeta parse(String path) {
@@ -38,16 +28,17 @@ class FileNameParser {
     var suffix = '';
     var name = stem;
 
-    if (name.startsWith(avgPrefix)) {
+    if (name.startsWith(SpectrumGeneratedPrefixes.average)) {
       kind = SpectrumKind.average;
-      name = name.substring(avgPrefix.length);
-    } else if (name.startsWith(resPrefix)) {
+      name = name.substring(SpectrumGeneratedPrefixes.average.length);
+    } else if (name.startsWith(SpectrumGeneratedPrefixes.difference)) {
       kind = SpectrumKind.difference;
-      name = name.substring(resPrefix.length).replaceAll('_', ' ');
+      name = name
+          .substring(SpectrumGeneratedPrefixes.difference.length)
+          .replaceAll('_', ' ');
     }
 
     if (kind != SpectrumKind.difference) {
-      // firstMatch возвращает RegExpMatch, у которого есть namedGroup
       final match = _suffixRe.firstMatch(name);
 
       if (match != null) {

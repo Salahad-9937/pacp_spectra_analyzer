@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../domain/models.dart';
-import 'file_name_parser.dart';
+import '../../domain/models.dart';
+import '../parsing/file_name_parser.dart';
 
 class SpectrumFileScanner {
-  final FileNameParser parser;
-
   SpectrumFileScanner(this.parser);
+
+  final FileNameParser parser;
 
   Future<List<SpectrumMeta>> scan(String directory) async {
     if (directory.isEmpty) {
