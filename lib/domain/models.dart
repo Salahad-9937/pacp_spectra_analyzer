@@ -1,3 +1,4 @@
+export 'manual_operation.dart';
 export 'spectrum_kind.dart';
 export 'spectrum_meta.dart';
 export 'spectrum_data.dart';

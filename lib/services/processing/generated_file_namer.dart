@@ -13,6 +13,12 @@ class GeneratedFileNamer {
     );
   }
 
+  String sumFileName(String groupKey) {
+    return _sanitizer.sanitize(
+      '${SpectrumGeneratedPrefixes.sum}$groupKey.txt',
+    );
+  }
+
   String differenceFileName({
     required String source,
     required String substance,

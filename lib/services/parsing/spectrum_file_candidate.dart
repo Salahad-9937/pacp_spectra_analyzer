@@ -18,6 +18,7 @@ class SpectrumFileCandidate {
 
     return _suffixRe.firstMatch(stem) != null ||
         filename.startsWith(SpectrumGeneratedPrefixes.average) ||
+        filename.startsWith(SpectrumGeneratedPrefixes.sum) ||
         filename.startsWith(SpectrumGeneratedPrefixes.difference);
   }
 }

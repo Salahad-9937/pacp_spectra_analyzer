@@ -1,5 +1,4 @@
 import 'package:path/path.dart' as p;
-
 import '../../domain/models.dart';
 import 'spectrum_file_candidate.dart';
 import 'spectrum_generated_prefixes.dart';
@@ -9,7 +8,6 @@ class FileNameParser {
       : _candidate = candidate ?? SpectrumFileCandidate();
 
   final SpectrumFileCandidate _candidate;
-
   final RegExp _suffixRe = RegExp(r'^(?<base>.+?)_(?<n1>\d+)_(?<n2>\d+)$');
   final RegExp _timeRe = RegExp(r'(\d+(?:[.,]\d+)?)');
 
@@ -19,7 +17,6 @@ class FileNameParser {
 
   SpectrumMeta parse(String path) {
     final filename = p.basename(path);
-
     final stem = filename.toLowerCase().endsWith('.txt')
         ? filename.substring(0, filename.length - 4)
         : filename;
@@ -31,6 +28,9 @@ class FileNameParser {
     if (name.startsWith(SpectrumGeneratedPrefixes.average)) {
       kind = SpectrumKind.average;
       name = name.substring(SpectrumGeneratedPrefixes.average.length);
+    } else if (name.startsWith(SpectrumGeneratedPrefixes.sum)) {
+      kind = SpectrumKind.sum;
+      name = name.substring(SpectrumGeneratedPrefixes.sum.length);
     } else if (name.startsWith(SpectrumGeneratedPrefixes.difference)) {
       kind = SpectrumKind.difference;
       name = name
@@ -40,7 +40,6 @@ class FileNameParser {
 
     if (kind != SpectrumKind.difference) {
       final match = _suffixRe.firstMatch(name);
-
       if (match != null) {
         final base = match.namedGroup('base') ?? name;
         suffix = '_${match.namedGroup('n1')}_${match.namedGroup('n2')}';
@@ -50,7 +49,6 @@ class FileNameParser {
 
     final base = name;
     final trimmedBase = base.trim();
-
     final tokens = trimmedBase.isEmpty
         ? <String>[]
         : trimmedBase.split(RegExp(r'\s+'));
@@ -72,7 +70,6 @@ class FileNameParser {
       timeText = tokens[timeIndex];
 
       final timeMatch = _timeRe.firstMatch(timeText);
-
       if (timeMatch != null) {
         minutes = double.tryParse(
           timeMatch.group(1)!.replaceAll(',', '.'),
@@ -87,7 +84,6 @@ class FileNameParser {
           source = '—';
           substance = _joinRange(tokens, 0, timeIndex);
         }
-
         isBackground = false;
       } else {
         if (tokens[0].toLowerCase() == 'фон') {
@@ -121,8 +117,9 @@ class FileNameParser {
       path: path,
       filename: filename,
       kind: kind,
-      isGenerated:
-          kind == SpectrumKind.average || kind == SpectrumKind.difference,
+      isGenerated: kind == SpectrumKind.average ||
+          kind == SpectrumKind.sum ||
+          kind == SpectrumKind.difference,
       source: source,
       substance: substance,
       timeText: timeText,
@@ -186,6 +183,8 @@ class FileNameParser {
 
     if (kind == SpectrumKind.average) {
       parts.add('[Среднее]');
+    } else if (kind == SpectrumKind.sum) {
+      parts.add('[Сумма]');
     } else if (kind == SpectrumKind.difference) {
       parts.add('[Без фона]');
     }

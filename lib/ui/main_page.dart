@@ -18,11 +18,13 @@ import '../services/processing/subtract_background_step.dart';
 import '../services/processing/spectrum_averager.dart';
 import '../services/processing/background_subtractor.dart';
 import '../services/processing/generated_file_namer.dart';
-
+import '../services/processing/manual_spectrum_processor.dart';
+import '../services/processing/spectrum_summator.dart';
 import 'theme.dart';
 import 'widgets/app_toolbar.dart';
 import 'widgets/file_list_panel.dart';
 import 'widgets/info_panel.dart';
+import 'widgets/manual_actions_panel.dart';
 import 'widgets/plot_panel.dart';
 import 'widgets/spectrum_chart.dart';
 
@@ -69,6 +71,15 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
     ),
   );
 
+  late final ManualSpectrumProcessor _manualProcessor = ManualSpectrumProcessor(
+    loader: _loader,
+    writer: _writer,
+    averager: SpectrumAverager(),
+    summator: SpectrumSummator(),
+    subtractor: BackgroundSubtractor(),
+    fileNamer: _fileNamer,
+  );
+
   String? _currentDirectory;
   List<SpectrumMeta> _items = [];
   Map<String, SpectrumMeta> _itemsByPath = {};
@@ -80,6 +91,10 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
 
   bool _processing = false;
   bool _loading = false;
+
+  ManualOperation _manualOperation = ManualOperation.average;
+  String? _backgroundPath;
+  bool _skipEmpty = true;
 
   Future<void> _chooseDirectory() async {
     try {
@@ -102,7 +117,6 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
       });
 
       _loader.invalidate();
-
       await _refresh();
     } catch (error) {
       if (!mounted) {
@@ -123,7 +137,6 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
         _plotCurves = [];
         _infoText = 'Директория не выбрана.';
       });
-
       return;
     }
 
@@ -146,6 +159,11 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
 
       _selectedPaths.removeWhere((path) => !byPath.containsKey(path));
 
+      final backgroundPath = _backgroundPath;
+      if (backgroundPath != null && !byPath.containsKey(backgroundPath)) {
+        _backgroundPath = null;
+      }
+
       final curves = await _loadSelectedCurves(metas, _selectedPaths);
 
       if (!mounted) {
@@ -161,7 +179,7 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
           _infoText =
               'В выбранной директории не найдено подходящих файлов.';
         } else {
-          _infoText = 'Кликните по названию файла, чтобы посмотреть информацию.\n'
+          _infoText = 'Кликните по названию файла, чтобы посмотреть информацию. '
               'Чекбокс добавляет файл на график.';
         }
       });
@@ -228,7 +246,6 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
         'Обработка спектров',
         'Сначала выберите директорию.',
       );
-
       return;
     }
 
@@ -250,7 +267,6 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
       }
 
       _loader.invalidate();
-
       await _refresh();
 
       if (!mounted) {
@@ -273,12 +289,103 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
     }
   }
 
+  List<SpectrumMeta> get _selectedMetas {
+    return _items
+        .where((meta) => _selectedPaths.contains(meta.path))
+        .toList();
+  }
+
+  bool get _canRunManual {
+    if (_currentDirectory == null) {
+      return false;
+    }
+
+    if (_selectedPaths.isEmpty) {
+      return false;
+    }
+
+    if (_manualOperation == ManualOperation.subtractBackground) {
+      final background = _itemsByPath[_backgroundPath];
+
+      if (background == null) {
+        return false;
+      }
+
+      return _selectedPaths.any(
+        (path) => path != background.path,
+      );
+    }
+
+    return true;
+  }
+
+  Future<void> _runManualProcessing() async {
+    final directory = _currentDirectory;
+
+    if (directory == null) {
+      await _showWarning(
+        'Менеджер обработки',
+        'Сначала выберите директорию.',
+      );
+      return;
+    }
+
+    if (_processing) {
+      return;
+    }
+
+    setState(() {
+      _processing = true;
+    });
+
+    _loader.invalidate();
+
+    try {
+      final selected = _selectedMetas;
+      final background = _itemsByPath[_backgroundPath];
+
+      final report = await _manualProcessor.run(
+        directory: directory,
+        operation: _manualOperation,
+        selected: selected,
+        background: background,
+        skipEmpty: _skipEmpty,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      _loader.invalidate();
+      await _refresh();
+
+      if (!mounted) {
+        return;
+      }
+
+      _showReport(report);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      await _showError('Ошибка ручной обработки', '$error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _processing = false;
+        });
+      }
+    }
+  }
+
   void _showReport(ProcessingReport report) {
     final summary = [
       'Обработка завершена.',
       'Обработано файлов: ${report.processedFiles}',
       'Пропущено пустых шаблонов: ${report.skippedEmptyFiles}',
       'Создано средних файлов: ${report.createdAverageFiles.length}',
+      'Создано файлов суммы: ${report.createdSumFiles.length}',
       'Создано файлов без фона: ${report.createdDifferenceFiles.length}',
     ];
 
@@ -293,6 +400,15 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
       details.add('Созданные средние файлы:');
 
       for (final path in report.createdAverageFiles) {
+        details.add('  - ${p.basename(path)}');
+      }
+    }
+
+    if (report.createdSumFiles.isNotEmpty) {
+      details.add('');
+      details.add('Созданные файлы суммы:');
+
+      for (final path in report.createdSumFiles) {
         details.add('  - ${p.basename(path)}');
       }
     }
@@ -430,6 +546,8 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
         return 'Исходное измерение';
       case SpectrumKind.average:
         return 'Среднее значение (создано программой)';
+      case SpectrumKind.sum:
+        return 'Сумма (создано программой)';
       case SpectrumKind.difference:
         return 'Разность без фона (создано программой)';
       case SpectrumKind.unknown:
@@ -510,11 +628,47 @@ class _SpectrumDesktopPageState extends State<SpectrumDesktopPage> {
                 children: [
                   SizedBox(
                     width: 400,
-                    child: FileListPanel(
-                      items: _items,
-                      selectedPaths: _selectedPaths,
-                      onToggle: _toggle,
-                      onInfo: _showInfo,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          height: 340,
+                          child: ManualActionsPanel(
+                            operation: _manualOperation,
+                            onOperationChanged: (value) {
+                              setState(() {
+                                _manualOperation = value;
+                              });
+                            },
+                            items: _items,
+                            backgroundPath: _backgroundPath,
+                            onBackgroundChanged: (value) {
+                              setState(() {
+                                _backgroundPath = value;
+                              });
+                            },
+                            selectedCount: _selectedPaths.length,
+                            skipEmpty: _skipEmpty,
+                            onSkipEmptyChanged: (value) {
+                              setState(() {
+                                _skipEmpty = value;
+                              });
+                            },
+                            canRun: _canRunManual,
+                            busy: busy,
+                            onRun: _runManualProcessing,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: FileListPanel(
+                            items: _items,
+                            selectedPaths: _selectedPaths,
+                            onToggle: _toggle,
+                            onInfo: _showInfo,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 12),
