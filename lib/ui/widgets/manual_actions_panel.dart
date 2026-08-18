@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models.dart';
 import '../theme.dart';
+import 'common/app_button.dart';
+import 'common/compact_checkbox_tile.dart';
+import 'common/labeled_dropdown.dart';
 import 'panel_card.dart';
 
 class ManualActionsPanel extends StatelessWidget {
@@ -24,18 +27,14 @@ class ManualActionsPanel extends StatelessWidget {
 
   final ManualOperation operation;
   final ValueChanged<ManualOperation> onOperationChanged;
-
   final List<SpectrumMeta> items;
   final String? backgroundPath;
   final ValueChanged<String?> onBackgroundChanged;
-
   final int selectedCount;
   final bool skipEmpty;
   final ValueChanged<bool> onSkipEmptyChanged;
-
   final bool clampNegative;
   final ValueChanged<bool> onClampNegativeChanged;
-
   final bool canRun;
   final bool busy;
   final VoidCallback onRun;
@@ -62,109 +61,70 @@ class ManualActionsPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Material(
-              type: MaterialType.transparency,
-              child: DropdownButtonFormField<ManualOperation>(
-                initialValue: operation,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Операция',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                items: ManualOperation.values
-                    .map(
-                      (op) => DropdownMenuItem(
-                        value: op,
-                        child: Text(op.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: busy
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          onOperationChanged(value);
-                        }
-                      },
-              ),
+            LabeledDropdown<ManualOperation>(
+              label: 'Операция',
+              value: operation,
+              items: ManualOperation.values
+                  .map(
+                    (op) => DropdownMenuItem(
+                      value: op,
+                      child: Text(op.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: busy
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        onOperationChanged(value);
+                      }
+                    },
             ),
             if (operation == ManualOperation.subtractBackground) ...[
               const SizedBox(height: 10),
-              Material(
-                type: MaterialType.transparency,
-                child: DropdownButtonFormField<String?>(
-                  initialValue: effectiveBackground,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Фоновый файл',
-                    border: OutlineInputBorder(),
-                    isDense: true,
+              LabeledDropdown<String?>(
+                label: 'Фоновый файл',
+                value: effectiveBackground,
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Не выбран'),
                   ),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('Не выбран'),
-                    ),
-                    ...items.map(
-                      (meta) => DropdownMenuItem<String?>(
-                        value: meta.path,
-                        child: Text(
-                          meta.shortLabel,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                  ...items.map(
+                    (meta) => DropdownMenuItem<String?>(
+                      value: meta.path,
+                      child: Text(
+                        meta.shortLabel,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ],
-                  onChanged: busy ? null : onBackgroundChanged,
-                ),
+                  ),
+                ],
+                onChanged: busy ? null : onBackgroundChanged,
               ),
               const SizedBox(height: 6),
-              Material(
-                type: MaterialType.transparency,
-                child: CheckboxListTile(
-                  value: clampNegative,
-                  onChanged: busy
-                      ? null
-                      : (value) {
-                          onClampNegativeChanged(value ?? true);
-                        },
-                  title: const Text('Обнулять отрицательные значения'),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                ),
+              CompactCheckboxTile(
+                title: 'Обнулять отрицательные значения',
+                value: clampNegative,
+                onChanged: onClampNegativeChanged,
+                enabled: !busy,
               ),
             ],
             const SizedBox(height: 6),
-            Material(
-              type: MaterialType.transparency,
-              child: CheckboxListTile(
-                value: skipEmpty,
-                onChanged: busy
-                    ? null
-                    : (value) {
-                        onSkipEmptyChanged(value ?? false);
-                      },
-                title: const Text('Пропускать пустые файлы'),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-              ),
+            CompactCheckboxTile(
+              title: 'Пропускать пустые файлы',
+              value: skipEmpty,
+              onChanged: onSkipEmptyChanged,
+              enabled: !busy,
             ),
             const SizedBox(height: 8),
-            ElevatedButton.icon(
+            AppButton(
+              kind: AppButtonKind.elevated,
+              label: 'Выполнить: ${operation.label}',
+              icon: Icons.play_arrow,
+              busy: busy,
+              showBusyIndicator: true,
               onPressed: canRun && !busy ? onRun : null,
-              icon: busy
-                  ? const SizedBox(
-                      width: 15,
-                      height: 15,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(Icons.play_arrow, size: 17),
-              label: Text('Выполнить: ${operation.label}'),
             ),
           ],
         ),

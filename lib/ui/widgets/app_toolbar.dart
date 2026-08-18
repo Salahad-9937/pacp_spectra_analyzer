@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'common/app_button.dart';
+import 'common/directory_path_badge.dart';
 
 class AppToolbar extends StatelessWidget {
   const AppToolbar({
@@ -31,69 +33,36 @@ class AppToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          OutlinedButton.icon(
+          AppButton(
+            label: 'Выбрать директорию',
+            icon: Icons.folder_open,
             onPressed: busy ? null : onChooseDirectory,
-            icon: const Icon(Icons.folder_open, size: 17),
-            label: const Text('Выбрать директорию'),
           ),
           const SizedBox(width: 8),
-          OutlinedButton.icon(
+          AppButton(
+            label: 'Обновить',
+            icon: Icons.refresh,
             onPressed: busy ? null : onRefresh,
-            icon: const Icon(Icons.refresh, size: 17),
-            label: const Text('Обновить'),
           ),
           const SizedBox(width: 8),
-          ElevatedButton.icon(
+          AppButton(
+            kind: AppButtonKind.elevated,
+            label: 'Обработать спектры',
+            icon: Icons.analytics,
+            busy: busy,
+            showBusyIndicator: true,
             onPressed: busy ? null : onProcess,
-            icon: busy
-                ? const SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.analytics, size: 17),
-            label: const Text('Обработать спектры'),
           ),
           const SizedBox(width: 8),
-          TextButton.icon(
+          AppButton(
+            kind: AppButtonKind.text,
+            label: 'Снять выбор',
+            icon: Icons.clear_all,
             onPressed: busy ? null : onClearSelection,
-            icon: const Icon(Icons.clear_all, size: 17),
-            label: const Text('Снять выбор'),
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Tooltip(
-              message: directory ?? 'Директория не выбрана',
-              child: Container(
-                height: 38,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F6FA),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.folder,
-                      size: 15,
-                      color: AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        directory ?? 'Директория не выбрана',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            child: DirectoryPathBadge(directory: directory),
           ),
         ],
       ),

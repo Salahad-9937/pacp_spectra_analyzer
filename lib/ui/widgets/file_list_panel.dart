@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models.dart';
 import '../theme.dart';
+import 'common/empty_hint.dart';
+import 'common/empty_state_view.dart';
+import 'common/section_header.dart';
 import 'panel_card.dart';
 
 class FileListPanel extends StatelessWidget {
@@ -20,35 +23,28 @@ class FileListPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final originalItems =
-        items.where((item) => !item.isGenerated).toList();
-    final generatedItems =
-        items.where((item) => item.isGenerated).toList();
+    final originalItems = items.where((item) => !item.isGenerated).toList();
+    final generatedItems = items.where((item) => item.isGenerated).toList();
 
     return PanelCard(
       title: 'Файлы',
       child: items.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Нет подходящих файлов',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                ),
-              ),
+          ? const EmptyStateView(
+              icon: Icons.folder_off,
+              message: 'Нет подходящих файлов',
             )
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 6),
               children: [
-                const _SectionHeader(text: 'Исходные файлы'),
+                const SectionHeader(text: 'Исходные файлы'),
                 if (originalItems.isEmpty)
-                  const _EmptyRow(text: 'Нет исходных файлов')
+                  const EmptyHint(text: 'Нет исходных файлов')
                 else
                   ...originalItems.map(_buildRow),
                 const SizedBox(height: 6),
-                const _SectionHeader(text: 'Созданные программой'),
+                const SectionHeader(text: 'Созданные программой'),
                 if (generatedItems.isEmpty)
-                  const _EmptyRow(text: 'Нет созданных файлов')
+                  const EmptyHint(text: 'Нет созданных файлов')
                 else
                   ...generatedItems.map(_buildRow),
                 const SizedBox(height: 6),
@@ -89,45 +85,6 @@ class FileListPanel extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 2),
-      child: Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.7,
-          color: AppTheme.textSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyRow extends StatelessWidget {
-  const _EmptyRow({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 4, 14, 4),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
       ),
     );
   }
